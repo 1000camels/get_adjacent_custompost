@@ -116,6 +116,6 @@ GetAdjacentCustomPost_i18n_init();
 // If it is successful, continue with initialization for this plugin
 if (GetAdjacentCustomPost_PhpVersionCheck()) {
     // Only load and run the init function if we know PHP version can parse it
-    include_once('get-adjacent-custom-post_init.php');
-    GetAdjacentCustomPost_init(__FILE__);
+    //include_once('get-adjacent-custom-post_init.php');
+    //GetAdjacentCustomPost_init(__FILE__);
 }
