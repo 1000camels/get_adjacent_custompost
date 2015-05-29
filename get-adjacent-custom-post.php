@@ -9,25 +9,6 @@
    License: GPLv3
   */
 
-/*
-    "WordPress Plugin Template" Copyright (C) 2015 Michael Simpson  (email : michael.d.simpson@gmail.com)
-
-    This following part of this file is part of WordPress Plugin Template for WordPress.
-
-    WordPress Plugin Template is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    WordPress Plugin Template is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with Contact Form to Database Extension.
-    If not, see http://www.gnu.org/licenses/gpl-3.0.html
-*/
 
 $GetAdjacentCustomPost_minimalRequiredPhpVersion = '5.0';
 
@@ -66,6 +47,60 @@ function GetAdjacentCustomPost_PhpVersionCheck() {
 function GetAdjacentCustomPost_i18n_init() {
     $pluginDir = dirname(plugin_basename(__FILE__));
     load_plugin_textdomain('get-adjacent-custom-post', false, $pluginDir . '/languages/');
+}
+
+/**
+ * Replacement for get_adjacent_post()
+ *
+ * This supports only the custom post types you identify and does not
+ * look at categories anymore. This allows you to go from one custom post type
+ * to another which was not possible with the default get_adjacent_post().
+ * Orig: wp-includes/link-template.php 
+ * 
+ * @param string $direction: Can be either 'prev' or 'next'
+ * @param multi $post_types: Can be a string or an array of strings
+ */
+function get_adjacent_custompost($direction = 'prev', $post_types = 'post') {
+    global $post, $wpdb;
+
+    if(empty($post)) return NULL;
+    if(!$post_types) return NULL;
+
+    if(is_array($post_types)){
+        $txt = '';
+        for($i = 0; $i <= count($post_types) - 1; $i++){
+            $txt .= "'".$post_types[$i]."'";
+            if($i != count($post_types) - 1) $txt .= ', ';
+        }
+        $post_types = $txt;
+    }
+
+    $current_post_date = $post->post_date;
+
+    $join = '';
+    $in_same_cat = FALSE;
+    $excluded_categories = '';
+    $adjacent = $direction == 'prev' ? 'previous' : 'next';
+    $op = $direction == 'prev' ? '<' : '>';
+    $order = $direction == 'prev' ? 'DESC' : 'ASC';
+
+    $join  = apply_filters( "get_{$adjacent}_post_join", $join, $in_same_cat, $excluded_categories );
+    $where = apply_filters( "get_{$adjacent}_post_where", $wpdb->prepare("WHERE p.post_title $op %s AND p.post_type IN({$post_types}) AND p.post_status = 'publish'", $post->post_title), $in_same_cat, $excluded_categories );
+    $sort  = apply_filters( "get_{$adjacent}_post_sort", "ORDER BY p.post_title $order LIMIT 1" );
+
+    $query = "SELECT p.* FROM $wpdb->posts AS p $join $where $sort";
+    $query_key = 'adjacent_post_' . md5($query);
+    $result = wp_cache_get($query_key, 'counts');
+    if ( false !== $result )
+        return $result;
+
+    $result = $wpdb->get_row("SELECT p.* FROM $wpdb->posts AS p $join $where $sort");
+  //print "SELECT p.* FROM $wpdb->posts AS p $join $where $sort<br/>";
+    if ( null === $result )
+        $result = '';
+
+    wp_cache_set($query_key, $result, 'counts');
+    return $result;
 }
 
 
